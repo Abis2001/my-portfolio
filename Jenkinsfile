@@ -1,37 +1,83 @@
-Pipeline{
+pipeline {
     agent any
-    stages{
-        stage('git clone'){
-            steps{
-                echo 'Cloning the repository...' url 'https://github.com/Abis2001/my-portfolio.git'
+
+    environment {
+        IMAGE_NAME = 'my-portfolio'
+        CONTAINER_NAME = 'my-portfolio1'
+    }
+
+    stages {
+        stage('Git Clone') {
+            steps {
+                echo 'Cloning the repository...'
+                checkout scm 
             }
         }
-        stage('docker build'){
-            steps{
+
+        stage('Docker Build') {
+            steps {
                 sh 'docker build -t my-portfolio .'
             }
         }
-        stage('docker login'){
-            steps{
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASSWORD" |
+                        docker login -u "$DOCKER_USERNAME" --password-stdin
+                    '''
                 }
             }
         }
-        stage('docker run'){
-            steps{
-                sh 'docker run -d -p 80:80 --name=my-portfolio1 my-portfolio'
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        docker tag my-portfolio "$DOCKER_USERNAME/my-portfolio:latest"
+                        docker push "$DOCKER_USERNAME/my-portfolio:latest"
+                    '''
+                }
             }
         }
-        stage('docker push'){
-            steps{
-                sh 'docker tag my-portfolio $DOCKER_USERNAME/my-portfolio:latest'
-                sh 'docker push $DOCKER_USERNAME/my-portfolio:latest'
+
+        stage('Docker Run') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        docker rm -f my-portfolio1 2>/dev/null || true
+
+                        docker run -d \
+                            --name my-portfolio1 \
+                            -p 8081:80 \
+                            "$DOCKER_USERNAME/my-portfolio:latest"
+                    '''
+                }
             }
         }
-        stage('docker logout'){
-            steps{
-                sh 'docker logout'
+
+        stage('Docker Logout') {
+            steps {
+                sh 'docker logout || true'
             }
         }
     }
