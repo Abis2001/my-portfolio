@@ -3,7 +3,7 @@ Pipeline{
     sages{
         stage('git clone'){
             steps{
-                echo 'Cloning the repository...' url '
+                echo 'Cloning the repository...' url 'https://github.com/Abis2001/my-portfolio.git'
             }
         }
         stage('docker build'){
