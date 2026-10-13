@@ -1,4 +1,4 @@
-Pipeline{
+pipeline{
     agent any
     sages{
         stage('git clone'){
